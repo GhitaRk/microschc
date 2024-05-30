@@ -52,21 +52,10 @@ class PacketParser:
             payload=buffer,
             raw=raw,
         )
-        
         return packet_descriptor
 
 class ParserError(Exception):
     def __init__(self, buffer: Buffer, message=None):
         exception_message: str = f"error: {message} while parsing buffer: {buffer}"
         super().__init__(message=exception_message)
-
-
-
-
-
-
-
-
-
-
-
+        

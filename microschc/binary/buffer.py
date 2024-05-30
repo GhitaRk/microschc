@@ -27,6 +27,9 @@ class Buffer:
         self.length:int = length
         self.padding:Padding = padding
         self.padding_length:int = 8*len(self.content) - self.length
+
+    def find(self, pattern):
+        return self.content.find(pattern)
         
     def _update_padding(self):
         self.padding_length = 8*len(self.content) - self.length
@@ -205,9 +208,6 @@ class Buffer:
             pad: Buffer = Buffer(content=pad_content, length=length-chunk.length, padding=Padding.RIGHT)
             chunk+=pad
         yield chunk
-
-        
-
 
     def __eq__(self, another: object) -> bool:
         '''
