@@ -5,9 +5,9 @@ from microschc.binary.buffer import Buffer
 from microschc.rfc8724 import FieldDescriptor, HeaderDescriptor
 from microschc.parser.parser import HeaderParser
 
-from test_crypto import convert_aux_sec_hdr_to_bytearray
-import mle
-from config import create_default_thread_message_factory, DEFAULT_NETWORK_KEY
+from microschc.external.test_crypto import convert_aux_sec_hdr_to_bytearray
+import microschc.external.mle as mle
+from microschc.external.config import create_default_thread_message_factory, DEFAULT_NETWORK_KEY
 
 
 Thread_HEADER_ID = 'Thread'
@@ -81,14 +81,17 @@ class ThreadMLEFields(str, Enum):
     TLV_LINK_MARGIN                 = f'{Thread_MLE_HEADER_ID}:TLV Link Margin'
     TLV_STATUS                      = f'{Thread_MLE_HEADER_ID}:TLV Status'
     TLV_VERSION                     = f'{Thread_MLE_HEADER_ID}:TLV Version'
-    TLV_ADDRESS_REGISTRATION        = f'{Thread_MLE_HEADER_ID}:TLV Address Representation'
+    TLV_ADDRESS_REGISTRATION        = f'{Thread_MLE_HEADER_ID}:TLV Address Registration'
     TLV_CHANNEL                     = f'{Thread_MLE_HEADER_ID}:TLV Channel'
     TLV_PANID                       = f'{Thread_MLE_HEADER_ID}:TLV PanID'
     TLV_ACTIVE_TIMESTAMP            = f'{Thread_MLE_HEADER_ID}:TLV Active Timestamp'
     TLV_PENDING_TIMESTAMP           = f'{Thread_MLE_HEADER_ID}:TLV Pending Timestamp'
-    TLV_ACTIVE_OP_DATASET            = f'{Thread_MLE_HEADER_ID}:TLV Active Operational Dataset'
-    TLV_PENDING_OP_DATASET           = f'{Thread_MLE_HEADER_ID}:TLV Pending Operational Dataset'
+    TLV_ACTIVE_OP_DATASET           = f'{Thread_MLE_HEADER_ID}:TLV Active Operational Dataset'
+    TLV_PENDING_OP_DATASET          = f'{Thread_MLE_HEADER_ID}:TLV Pending Operational Dataset'
     TLV_THREAD_DISCOVERY            = f'{Thread_MLE_HEADER_ID}:TLV Thread Discovery'
+
+    TLV_SUPERVISION_INTERVAL        = f'{Thread_MLE_HEADER_ID}:TLV Supervision Interval'
+    TLV_CSL_CLOCK_ACCURACY          = f'{Thread_MLE_HEADER_ID}:TLV CSL Clock Accuracy'
 
 # Mapping of TLVs
 tlv_field_map = {
@@ -116,7 +119,10 @@ tlv_field_map = {
     mle.PendingTimestamp        : ThreadMLEFields.TLV_PENDING_TIMESTAMP,
     mle.ThreadDiscovery         : ThreadMLEFields.TLV_THREAD_DISCOVERY,
     mle.ActiveOperationalDataset : ThreadMLEFields.TLV_ACTIVE_OP_DATASET,
-    mle.PendingOperationalDataset: ThreadMLEFields.TLV_PENDING_OP_DATASET
+    mle.PendingOperationalDataset: ThreadMLEFields.TLV_PENDING_OP_DATASET,
+
+    mle.SupervisionInterval      : ThreadMLEFields.TLV_SUPERVISION_INTERVAL,
+    mle.CslClockAccuracy         : ThreadMLEFields.TLV_CSL_CLOCK_ACCURACY
 }
 
 # Next headers for IPv6 protocols
@@ -150,10 +156,11 @@ class ThreadParser(HeaderParser):
         if hasattr(message, 'mac_header'):
             # Take only mac frame data packets, not beacon ack and command, no fragments
             if message.mac_header.frame_type == 1: # DATA = 1
-                #IPV6 fields
-                version         = (message.ipv6_packet.ipv6_header.version & 0x0F).to_bytes(1, 'big')
-                traffic_class   = (message.ipv6_packet.ipv6_header.traffic_class & 0x0F).to_bytes(1, 'big')
-                flow_label      = (message.ipv6_packet.ipv6_header.flow_label & 0xff).to_bytes(1, 'big')
+                version = (message.ipv6_packet.ipv6_header.version & 0x0F).to_bytes(1, 'big')
+                traffic_class_flow_label = (message.ipv6_packet.ipv6_header.traffic_class << 20) | message.ipv6_packet.ipv6_header.flow_label
+                traffic_class = ((traffic_class_flow_label >> 20) & 0xFF).to_bytes(1, 'big')
+                flow_label = (traffic_class_flow_label & 0xFFFFF).to_bytes(3, 'big')
+
                 payload_length  = struct.pack(">H", (message.ipv6_packet.ipv6_header.payload_length))
                 next_header     = (message.ipv6_packet.ipv6_header.next_header).to_bytes(1, 'big')
                 hop_limit       = (message.ipv6_packet.ipv6_header.hop_limit).to_bytes(1, 'big')

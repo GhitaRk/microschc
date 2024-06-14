@@ -43,6 +43,7 @@ class PacketParser:
         packet_fields: List[FieldDescriptor] = []
         
         for header_descriptor in header_descriptors:
+        
             header_fields: List[FieldDescriptor] = [FieldDescriptor(id=f.id, value=f.value, position=f.position)  for f in header_descriptor.fields]
             packet_fields += header_fields
 
@@ -58,4 +59,3 @@ class ParserError(Exception):
     def __init__(self, buffer: Buffer, message=None):
         exception_message: str = f"error: {message} while parsing buffer: {buffer}"
         super().__init__(message=exception_message)
-        

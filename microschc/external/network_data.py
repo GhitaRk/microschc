@@ -67,7 +67,7 @@ class NetworkDataSubTlvsFactory(SubTlvsFactory):
             data_byte = ord(data.read(1))
 
             stable = data_byte & 0x01
-            _type = (data_byte >> 1) & 0x7F
+            _type =  data_byte  & 0xFE
 
             length = ord(data.read(1))
             value = data.read(length)
