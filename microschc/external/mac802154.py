@@ -33,12 +33,13 @@
 import io
 import struct
 
-from microschc.external import config
+import microschc.external.config as config
 from microschc.external.common import MacAddress, MacAddressType, MessageInfo
 from microschc.external.net_crypto import (
     AuxiliarySecurityHeader,
     CryptoEngine,
     MacCryptoMaterialCreator,
+    Mode2CryptoMaterialCreator
 )
 
 
@@ -144,30 +145,6 @@ class MacHeader:
         self.mic = mic
 
         self.fcs = fcs
-
-    def __repr__(self):
-        frame_type_str = {
-            self.FrameType.BEACON: "BEACON",
-            self.FrameType.DATA: "DATA",
-            self.FrameType.ACK: "ACK",
-            self.FrameType.COMMAND: "COMMAND",
-        }.get(self.frame_type, "UNKNOWN")
-
-        return (f"MacHeader(frame_type={frame_type_str}, "
-                f"frame_pending={self.frame_pending}, "
-                f"ack_request={self.ack_request}, "
-                f"frame_version={self.frame_version}, "
-                f"seq={self.seq}, "
-                f"dest_pan_id={self.dest_pan_id}, "
-                f"dest_address={self.dest_address}, "
-                f"src_pan_id={self.src_pan_id}, "
-                f"src_address={self.src_address}, "
-                f"command_type={self.command_type}, "
-                f"aux_sec_header={self.aux_sec_header}, "
-                f"mic={self.mic}, "
-                f"fcs={self.fcs})")
-    
-
 
 class MacPayload:
     """Class representing 802.15.4 MAC payload."""
@@ -368,8 +345,15 @@ class MacFrame:
                 message_info.source_mac_address = DeviceDescriptors.get_extended(src_address).mac_address
             else:
                 message_info.source_mac_address = src_address.mac_address
-            sec_obj = CryptoEngine(MacCryptoMaterialCreator(config.DEFAULT_NETWORK_KEY))
-            self.payload = MacPayload(bytearray(open_payload) + sec_obj.decrypt(private_payload, mic, message_info))
+            
+
+            # Handling the decryption of mle.announce frames and other frames differently
+            if message_info.aux_sec_hdr.key_id == b'\xff\xff\xff\xff\xff': 
+                sec_obj = CryptoEngine(Mode2CryptoMaterialCreator())
+                self.payload = MacPayload(bytearray(open_payload) + sec_obj.decrypt(private_payload, mic, message_info))
+            else: 
+                sec_obj = CryptoEngine(MacCryptoMaterialCreator(config.DEFAULT_NETWORK_KEY))
+                self.payload = MacPayload(bytearray(open_payload) + sec_obj.decrypt(private_payload, mic, message_info))
 
         else:
             self.payload = MacPayload(payload)

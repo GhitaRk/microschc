@@ -416,7 +416,7 @@ class Route64(object):
         for lqrd in self._link_quality_and_route_data:
             data += lqrd.to_bytes()
         return struct.pack(">BB", TlvType.ROUTE64, len(data)) + data
-       
+   
 
 class Route64Factory:
 
@@ -942,7 +942,6 @@ class AddressRegistration(object):
         # Type = 19, Length is dynamic based on the address content
         data = bytearray()
         for address in self._addresses:
-            print(address)
             data += address.to_bytes()
         return struct.pack(">BB", TlvType.ADDRESS_REGISTRATION, len(data)) + data
 

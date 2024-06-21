@@ -131,6 +131,45 @@ class CryptoMaterialCreator(object):
     def mic_length(self):
         raise NotImplementedError
 
+##### ADDED ###
+class Mode2CryptoMaterialCreator(CryptoMaterialCreator):
+
+    MODE2_KEY = bytearray([0x78, 0x58, 0x16, 0x86, 0xfd, 0xb4, 0x58, 0x0f, 0xb0, 0x92, 0x54, 0x6a, 0xec, 0xbd, 0x15, 0x66])
+    MODE2_EXT_ADDRESS = bytearray([0x35, 0x06, 0xfe, 0xb8, 0x23, 0xd4, 0x87, 0x12])
+
+    def __init__(self):
+        super(Mode2CryptoMaterialCreator, self).__init__(self.MODE2_KEY)
+    
+    def _create_nonce(self, eui64, frame_counter, security_level):
+        """ Create CCM Nonce required by AES-128 CCM for encryption and decryption. """
+        return bytes(eui64 + struct.pack(">LB", frame_counter, security_level))
+
+    def _create_authenticated_data(self, mhr, auxiliary_security_header, extra_open_fields):
+        """ Create Authenticated Data """
+        return bytes(mhr + auxiliary_security_header + extra_open_fields)
+
+    def create_key_and_nonce_and_authenticated_data(self, message_info):
+        mac_key = self.MODE2_KEY
+
+        nonce = self._create_nonce(
+            self.MODE2_EXT_ADDRESS,
+            message_info.aux_sec_hdr.frame_counter,
+            message_info.aux_sec_hdr.security_level,
+        )
+
+        auth_data = self._create_authenticated_data(
+            message_info.mhr_bytes,
+            message_info.aux_sec_hdr_bytes,
+            message_info.extra_open_fields,
+        )
+
+        return mac_key, nonce, auth_data
+
+    @property
+    def mic_length(self):
+        return 4
+
+############
 
 class MacCryptoMaterialCreator(CryptoMaterialCreator):
 
@@ -331,6 +370,7 @@ class AuxiliarySecurityHeader:
             self.frame_counter,
             hexlify(self.key_id),
         )
+
 
 class AuxiliarySecurityHeaderFactory:
 
